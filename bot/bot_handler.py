@@ -15,8 +15,16 @@ class TelegramBotHandler:
         if not self.token:
             raise ValueError("TELEGRAM_BOT_TOKEN not set in .env")
         self.agent = DreamDiaryAgent()
-        self.app = Application.builder().token(self.token).build()
+        self.app = (
+            Application.builder()
+            .token(self.token)
+            .connect_timeout(30.0)
+            .read_timeout(30.0)
+            .write_timeout(30.0)
+            .build()
+        )
         self._setup_handlers()
+        self.app.add_error_handler(self.error_handler)
 
     def _setup_handlers(self):
         """Set up command and message handlers."""
@@ -42,17 +50,36 @@ class TelegramBotHandler:
         )
         await update.message.reply_text(help_text)
 
+    async def error_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle errors in the bot."""
+        logging.error(f"Update {update} caused error: {context.error}", exc_info=context.error)
+        if update and update.message:
+            try:
+                await update.message.reply_text(
+                    "An error occurred. Please try again later."
+                )
+            except:
+                pass  # If we can't send message, just log
+
     async def handle_dream(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle incoming dream text."""
         dream_text = update.message.text
         user_id = update.effective_user.id
 
+        await update.message.reply_text("Analyzing your dream... Please wait.")
+
         try:
             response = self.agent.process_dream(dream_text, user_id=user_id)
             await update.message.reply_text(response)
+
         except Exception as e:
-            logging.error(f"Error processing dream: {e}")
-            await update.message.reply_text("Sorry, an error occurred. Please try again.")
+            logging.error(f"Error processing dream: {e}", exc_info=True)
+            try:
+                await update.message.reply_text(
+                    "Sorry, an error occurred while analyzing your dream. Please try again."
+                )
+            except:
+                pass  # If even error message fails, just log it
 
     def run(self):
         """Run the bot."""

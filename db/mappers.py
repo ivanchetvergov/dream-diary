@@ -31,8 +31,8 @@ class DreamMapper:
             "id": dream.id,
             "user_id": dream.user_id,
             "text": dream.text,
-            "analysis": dream.analysis,
-            "emotions": dream.emotions,
+            "analysis": dream.raw_analysis.get("content") if dream.raw_analysis else None,
+            "language": dream.language,
             "created_at": dream.created_at.isoformat() if dream.created_at else None
         }
 
@@ -41,8 +41,8 @@ class DreamMapper:
         return Dream(
             user_id=data["user_id"],
             text=data["text"],
-            analysis=data.get("analysis"),
-            emotions=data.get("emotions")
+            raw_analysis={"content": data.get("analysis")} if data.get("analysis") else {},
+            language=data.get("language", "en")
         )
 
 

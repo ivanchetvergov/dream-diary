@@ -11,8 +11,9 @@ Base = declarative_base()
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
     telegram_id = Column(BigInteger, unique=True, nullable=False)
+    username = Column(String(255))
     language = Column(String(2), default="en")  # 'en' or 'ru'
     created_at = Column(TIMESTAMP(timezone=True), default=datetime.utcnow)
     settings = Column(JSON, default=dict)       # JSONB for extensible settings
@@ -23,8 +24,8 @@ class User(Base):
 class Dream(Base):
     __tablename__ = "dreams"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    user_id = Column(BigInteger, ForeignKey("users.id"), nullable=False)
     text = Column(Text, nullable=False)
     language = Column(String(2), default="en")
     created_at = Column(TIMESTAMP(timezone=True), default=datetime.utcnow)
@@ -37,8 +38,8 @@ class Dream(Base):
 class Classification(Base):
     __tablename__ = "classifications"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    dream_id = Column(UUID(as_uuid=True), ForeignKey("dreams.id"), nullable=False)
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    dream_id = Column(BigInteger, ForeignKey("dreams.id"), nullable=False)
     model = Column(String(50), nullable=False)  # e.g., 'roberta-emotions'
     labels = Column(JSON, nullable=False)       # Array of labels
     scores = Column(JSON, nullable=False)       # Dict of scores
@@ -49,8 +50,8 @@ class Classification(Base):
 class ChatHistory(Base):
     __tablename__ = "chat_history"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    user_id = Column(BigInteger, ForeignKey("users.id"), nullable=False)
     message = Column(Text, nullable=False)
     response = Column(Text, nullable=False)
     timestamp = Column(TIMESTAMP(timezone=True), default=datetime.utcnow)

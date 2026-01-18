@@ -3,17 +3,20 @@
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
     telegram_id BIGINT UNIQUE NOT NULL,
+    language VARCHAR(2) DEFAULT 'en',
     username VARCHAR(255),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    settings JSONB DEFAULT '{}'
 );
 
 CREATE TABLE dreams (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     text TEXT NOT NULL,
-    analysis TEXT,
-    emotions JSONB,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    language VARCHAR(2) DEFAULT 'en',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    raw_analysis JSONB DEFAULT '{}',
+    processed BOOLEAN DEFAULT FALSE
 );
 
 CREATE TABLE classifications (

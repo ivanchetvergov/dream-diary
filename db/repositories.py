@@ -30,13 +30,28 @@ class DreamRepository:
     """Repository for Dream model."""
 
     @staticmethod
-    def create(user_id: int, text: str, analysis: str = None, emotions: dict = None) -> Dream:
-        with SessionLocal() as session:
-            dream = Dream(user_id=user_id, text=text, analysis=analysis, emotions=emotions)
-            session.add(dream)
-            session.commit()
-            session.refresh(dream)
-            return dream
+    def create(user_id: int, text: str, analysis: str = None, language: str = "en") -> Dream:
+        try:
+            print(f"[DreamRepository] Creating dream for user_id={user_id}")
+            with SessionLocal() as session:
+                dream = Dream(
+                    user_id=user_id,
+                    text=text,
+                    raw_analysis={"content": analysis} if analysis else {},
+                    language=language
+                )
+                session.add(dream)
+                print(f"[DreamRepository] Dream added to session, committing...")
+                session.commit()
+                print(f"[DreamRepository] Commit successful, refreshing...")
+                session.refresh(dream)
+                print(f"[DreamRepository] Dream created successfully with id={dream.id}")
+                return dream
+        except Exception as e:
+            print(f"❌ [DreamRepository] Error creating dream: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
 
     @staticmethod
     def get_by_user(user_id: int) -> List[Dream]:
@@ -54,15 +69,25 @@ class ClassificationRepository:
 
     @staticmethod
     def create(dream_id: int, emotion: str, intensity: int, symbol: str = None) -> Classification:
-        with SessionLocal() as session:
-            classification = Classification(dream_id=dream_id,
-                                            emotion=emotion,
-                                            intensity=intensity,
-                                            symbol=symbol)
-            session.add(classification)
-            session.commit()
-            session.refresh(classification)
-            return classification
+        try:
+            print(f"[ClassificationRepository] Creating classification for dream_id={dream_id}, emotion={emotion}")
+            with SessionLocal() as session:
+                classification = Classification(
+                    dream_id=dream_id,
+                    model="claude-emotions",
+                    labels=[emotion] if emotion else [],
+                    scores={emotion: intensity} if emotion else {}
+                )
+                session.add(classification)
+                session.commit()
+                session.refresh(classification)
+                print(f"[ClassificationRepository] Classification created with id={classification.id}")
+                return classification
+        except Exception as e:
+            print(f"[ClassificationRepository] Error: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
 
     @staticmethod
     def get_by_dream(dream_id: int) -> List[Classification]:
@@ -75,12 +100,20 @@ class ChatHistoryRepository:
 
     @staticmethod
     def add_message(user_id: int, message: str, response: str) -> ChatHistory:
-        with SessionLocal() as session:
-            chat = ChatHistory(user_id=user_id, message=message, response=response)
-            session.add(chat)
-            session.commit()
-            session.refresh(chat)
-            return chat
+        try:
+            print(f"[ChatHistoryRepository] Adding message for user_id={user_id}")
+            with SessionLocal() as session:
+                chat = ChatHistory(user_id=user_id, message=message, response=response)
+                session.add(chat)
+                session.commit()
+                session.refresh(chat)
+                print(f"[ChatHistoryRepository] Chat history created with id={chat.id}")
+                return chat
+        except Exception as e:
+            print(f"[ChatHistoryRepository] Error: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
 
     @staticmethod
     def get_by_user(user_id: int, limit: int = 20) -> List[ChatHistory]:

@@ -27,7 +27,7 @@ class Config:
     TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
     HUGGINGFACE_TOKEN = os.getenv("HUGGINGFACE_TOKEN", "")
     ANTHROPIC_TOKEN = os.getenv("ANTHROPIC_API_KEY", "")
-    DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:pass@localhost:5432/dreamweaver")
+    DATABASE_URL = os.getenv("DATABASE_URL", "")
 
     @classmethod
     def get(cls, key: str) -> Any:

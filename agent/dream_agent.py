@@ -3,6 +3,7 @@
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from typing import List, Dict, Any
+import threading
 from config import Config
 from db.repositories import UserRepository, DreamRepository, ClassificationRepository, ChatHistoryRepository
 from db.mappers import EmotionMapper
@@ -15,9 +16,10 @@ class DreamDiaryAgent:
         """Initialize the agent with Claude."""
         self.api_key = anthropic_api_key or Config.ANTHROPIC_TOKEN
         self.llm = ChatAnthropic(
-            temperature=0.8,
+            temperature=0.92,
             anthropic_api_key=self.api_key,
-            model="claude-3-sonnet-20240229"
+            model="claude-3-haiku-20240307",
+            # max_tokens=600
         )
         self.chat_history: List = []
         self.system_prompt = self._create_system_prompt()
@@ -92,35 +94,71 @@ class DreamDiaryAgent:
         if len(self.chat_history) > 20:
             self.chat_history = self.chat_history[-20:]
 
-        # Save to DB
-        try:
-            telegram_id = user_id if user_id else 1  # Use provided or dummy
-            user = UserRepository.get_or_create(telegram_id=telegram_id, username=f"user_{telegram_id}")
-            dream = DreamRepository.create(
-                user_id=user.id,
-                text=dream_text,
-                analysis=response.content,
-                emotions=EmotionMapper.parse_emotions(emotions)
-            )
-            # Parse and save classifications
-            emotion_list = EmotionMapper.parse_emotions(emotions)
-            for emo in emotion_list:
-                ClassificationRepository.create(
-                    dream_id=dream.id,
-                    emotion=emo["emotion"],
-                    intensity=emo["intensity"],
-                    symbol=None  # TODO: extract symbols if needed
-                )
-            # Save chat history
-            ChatHistoryRepository.add_message(
-                user_id=user.id,
-                message=dream_text,
-                response=response.content
-            )
-        except Exception as e:
-            print(f"DB save error: {e}")  # Log error, but don't fail
+        # Save to DB asynchronously (with emotions data)
+        self._save_to_db_async(dream_text, response.content, emotions, user_id)
 
         return response.content
+
+    def _save_to_db_async(self, dream_text: str, response_content: str, emotions: str, user_id: int = None):
+        """Save dream data to DB in a background thread with full error handling."""
+        def save():
+            print("Starting async DB save...")
+            try:
+                # Create or get user
+                telegram_id = user_id if user_id else 1
+                print(f"Saving for user {telegram_id}")
+                user = UserRepository.get_or_create(telegram_id=telegram_id, username=f"user_{telegram_id}")
+                if not user:
+                    print("Error: Could not create/find user")
+                    return
+                print(f"User created/found: {user.id}")
+
+                # Create dream record
+                print(f"Creating dream with user_id={user.id}, text_length={len(dream_text)}, analysis_length={len(response_content)}")
+                dream = DreamRepository.create(
+                    user_id=user.id,
+                    text=dream_text,
+                    analysis=response_content,
+                    language="en"  # Can be detected later
+                )
+                if not dream:
+                    print("Error: Could not create dream")
+                    return
+                print(f"Dream created: {dream.id}")
+
+                # Parse and save emotions as classifications
+                try:
+                    emotion_list = EmotionMapper.parse_emotions(emotions) if emotions else []
+                    print(f"Parsed {len(emotion_list)} emotions")
+                    for emo in emotion_list:
+                        if emo and emo.get("emotion"):
+                            ClassificationRepository.create(
+                                dream_id=dream.id,
+                                emotion=emo.get("emotion"),
+                                intensity=emo.get("intensity", 0),
+                                symbol=None
+                            )
+                except Exception as e:
+                    print(f"Error parsing/saving emotions: {e}")
+
+                # Save chat history
+                try:
+                    ChatHistoryRepository.add_message(
+                        user_id=user.id,
+                        message=dream_text,
+                        response=response_content
+                    )
+                except Exception as e:
+                    print(f"Error saving chat history: {e}")
+
+                print("DB save completed successfully.")
+            except Exception as e:
+                print(f"❌ Async DB save error: {e}")
+                import traceback
+                traceback.print_exc()
+
+        thread = threading.Thread(target=save, daemon=True)
+        thread.start()
 
     def clear_history(self):
         """Clear chat history."""
