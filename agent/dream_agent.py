@@ -54,6 +54,8 @@ class DreamDiaryAgent:
             "'Psychological Interpretation', 'Guided Meditation', 'Reflection Tips'. "
             "\n\n"
             "Keep responses supportive, evidence-based, and comprehensive but concise (aim for 300-500 words)."
+            "\n\n"
+            "Respond in the same language as the user's input. If the input is in Russian, respond in Russian; if in English, respond in English."
         )
 
     def process_dream(self, dream_text: str, user_id: int = None) -> str:
